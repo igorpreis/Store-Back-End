@@ -141,6 +141,7 @@ async function deleteTshirt(req, res) {
 
   if (tshirtDoc.exists) {
     await db.collection("tshirts").doc(id).delete()
+    await Functions.delTshirtCarts(id)
     return res.status(200).json({
       message: `T-shirt Id: ${id} deleted successfully`,
     })

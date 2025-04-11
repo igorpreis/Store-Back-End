@@ -31,7 +31,6 @@ function hasDuplicates(array, key) {
   return { success: result, duplicate: duplicate } // Não encontrou duplicada
 }
 
-
 async function verifyTshirtIds(tshirts) {
   try {
     //Tshirts IDs Map
@@ -117,6 +116,50 @@ function emptyCart() {
   return cart
 }
 
+async function delTshirtCarts(tshirtId) {
+  try {
+    // 1. Buscar todos os carrinhos
+    const carts = await db.collection("cart").get()
+
+    // 2. Atualizar cada carrinho
+    const updates = []
+
+    carts.forEach((cart) => {
+      const data = cart.data()
+
+      // Confirmar se "items" é um array válido
+      const items = Array.isArray(data.tshirts) ? data.tshirts : []
+
+      // Verificar se o carrinho contém a T-shirt
+      const exists = items.some((i) => i.tshirtId === tshirtId)
+
+      if (exists) {
+        // Remover a T-shirt do array
+        const updatedItems = items.filter((i) => i.tshirtId !== tshirtId)
+
+        // Recalcular o total de itens
+        const updatedCart = {
+          ...data,
+          tshirts: updatedItems,
+          lastUpdated: new Date().toISOString(),
+          totalItems: CalcTotalItems(updatedItems),
+        }
+
+        // Adicionar a atualização à lista de promessas
+        updates.push(db.collection("cart").doc(cart.id).update(updatedCart))
+      }
+    })
+
+    // 3. Executar todas as atualizações em paralelo
+    await Promise.all(updates)
+
+    console.log(`T-shirt with ID ${tshirtId} removed from all carts and totals recalculated.`)
+  } catch (err) {
+    console.error("Error deleting T-shirt and updating carts:", err)
+    throw new Error(err.message || "Failed to delete T-shirt and update carts.")
+  }
+}
+
 module.exports = {
   isEmpty,
   checkId,
@@ -128,4 +171,5 @@ module.exports = {
   stockUpdate,
   stockReturn,
   emptyCart,
+  delTshirtCarts,
 }
